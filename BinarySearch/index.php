@@ -17,28 +17,17 @@ function formatTanggalExcel($tanggalRaw) {
 function binarySearch($data, $startDate, $endDate) {
     $low = 0;
     $high = count($data) - 1;
-    $result = [];
+    $startIndex = -1;
+    $endIndex = -1;
 
+    // Cari indeks pertama dalam rentang menggunakan binary search
     while ($low <= $high) {
         $mid = floor(($low + $high) / 2);
         $currentDate = $data[$mid]['tanggal'];
 
         if ($currentDate >= $startDate && $currentDate <= $endDate) {
-            // Menemukan rentang yang sesuai
-            // Ambil data sekitar posisi mid
-            $left = $mid;
-            $right = $mid;
-            while ($left >= 0 && $data[$left]['tanggal'] >= $startDate) {
-                $result[] = $data[$left];
-                $left--;
-            }
-            while ($right < count($data) && $data[$right]['tanggal'] <= $endDate) {
-                if ($right !== $mid) {
-                    $result[] = $data[$right];
-                }
-                $right++;
-            }
-            break;
+            $startIndex = $mid;
+            $high = $mid - 1; // Coba cari yang lebih kecil
         } elseif ($currentDate < $startDate) {
             $low = $mid + 1;
         } else {
@@ -46,8 +35,38 @@ function binarySearch($data, $startDate, $endDate) {
         }
     }
 
-    return $result;
+    if ($startIndex == -1) return []; // Tidak ada data dalam rentang
+
+    // Cari indeks terakhir dalam rentang menggunakan binary search
+    $low = 0;
+    $high = count($data) - 1;
+    while ($low <= $high) {
+        $mid = floor(($low + $high) / 2);
+        $currentDate = $data[$mid]['tanggal'];
+
+        if ($currentDate >= $startDate && $currentDate <= $endDate) {
+            $endIndex = $mid;
+            $low = $mid + 1; // Coba cari yang lebih besar
+        } elseif ($currentDate < $startDate) {
+            $low = $mid + 1;
+        } else {
+            $high = $mid - 1;
+        }
+    }
+
+    // **Meluas ke atas untuk mendapatkan semua data dengan tanggal awal**
+    while ($startIndex > 0 && $data[$startIndex - 1]['tanggal'] == $data[$startIndex]['tanggal']) {
+        $startIndex--;
+    }
+
+    // **Meluas ke bawah untuk mendapatkan semua data dengan tanggal akhir**
+    while ($endIndex < count($data) - 1 && $data[$endIndex + 1]['tanggal'] == $data[$endIndex]['tanggal']) {
+        $endIndex++;
+    }
+
+    return array_slice($data, $startIndex, ($endIndex - $startIndex + 1));
 }
+
 
 echo "<h1>Data Penjualan Toko Bunga</h1>";
 
@@ -114,9 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Urutkan berdasarkan tanggal sebelum menggunakan Binary Search
+            // Urutkan berdasarkan tanggal **ascending**
             usort($allData, function($a, $b) {
-                return strcmp($a['tanggal'], $b['tanggal']);
+                return strtotime($a['tanggal']) - strtotime($b['tanggal']);
             });
 
             // Gunakan Binary Search untuk mencari data dalam rentang tanggal
@@ -124,41 +143,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Pastikan data hasil Binary Search tetap terurut
             usort($filteredData, function($a, $b) {
-                return strcmp($a['tanggal'], $b['tanggal']);
+                return strtotime($a['tanggal']) - strtotime($b['tanggal']);
             });
 
-            // Hitung total pemasukan, pengeluaran, dan saldo
-            // $totalPemasukan = 0;
-            // $totalPengeluaran = 0;
-            // $totalSaldo = 0;
-
-            // foreach ($filteredData as $data) {
-            //     $totalPemasukan += (float) $data['pemasukan'];
-            //     $totalPengeluaran += (float) $data['pengeluaran'];
-            //     $totalSaldo += (float) $data['saldo'];
-            // }
-
             // **Menampilkan Data**
-            echo "<table border='1' cellpadding='5'>";
-            echo "<thead><tr><th>NO</th><th>TANGGAL</th><th>DESKRIPSI</th><th>PEMASUKAN</th><th>PENGELUARAN</th><th>SALDO AKHIR</th></tr></thead>";
-            echo "<tbody>";
+echo "<table border='1' cellpadding='5'>";
+echo "<thead><tr><th>NO</th><th>TANGGAL</th><th>DESKRIPSI</th><th>PEMASUKAN</th><th>PENGELUARAN</th><th>SALDO AKHIR</th></tr></thead>";
+echo "<tbody>";
 
-            if (!empty($filteredData)) {
-                foreach ($filteredData as $index => $data) {
-                    echo "<tr>";
-                    echo "<td>" . ($index + 1) . "</td>";
-                    echo "<td>{$data['tanggal']}</td>";
-                    echo "<td>{$data['deskripsi']}</td>";
-                    echo "<td>{$data['pemasukan']}</td>";
-                    echo "<td>{$data['pengeluaran']}</td>";
-                    echo "<td>{$data['saldo']}</td>";
-                    echo "</tr>";
-                }
-            } else {
-                echo "<tr><td colspan='6'>Tidak ada data dalam rentang tanggal ini.</td></tr>";
-            }
+if (!empty($filteredData)) {
+    // Data sudah diurutkan sesuai tanggal, jadi kita cukup menampilkan tanpa perlu membalik urutan lagi
+    foreach ($filteredData as $index => $data) {
+        echo "<tr>";
+        echo "<td>" . ($index + 1) . "</td>";
+        echo "<td>{$data['tanggal']}</td>";
+        echo "<td>{$data['deskripsi']}</td>";
+        echo "<td>{$data['pemasukan']}</td>";
+        echo "<td>{$data['pengeluaran']}</td>";
+        echo "<td>{$data['saldo']}</td>";
+        echo "</tr>";
+    }
+} else {
+    echo "<tr><td colspan='6'>Tidak ada data dalam rentang tanggal ini.</td></tr>";
+}
 
-            echo "</tbody></table>";
+echo "</tbody></table>";
+
         }
     }
 }
