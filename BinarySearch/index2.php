@@ -16,14 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
     $file = $_FILES['excel_file'];
     $uploadDir = 'uploads/';
     $filePath = $uploadDir . basename($file['name']);
-
-    // Periksa apakah file sudah ada di direktori
-    if (file_exists($filePath)) {
-        echo "<p style='color: red;'>File sudah ada, tidak perlu diunggah lagi.</p>";
+    $fileType = pathinfo($filePath, PATHINFO_EXTENSION);
+    
+    // Validasi ekstensi file
+    if ($fileType !== 'xlsx') {
+        echo "<p style='color: red;'>Hanya file dengan ekstensi .xlsx yang diizinkan.</p>";
+    }
+    // Validasi ukuran file (misalnya, maksimal 5MB)
+    elseif ($file['size'] > 5 * 1024 * 1024) {
+        echo "<p style='color: red;'>Ukuran file terlalu besar. Maksimal 5MB.</p>";
+    }
+    // Cek apakah file sudah ada di server
+    elseif (file_exists($filePath)) {
+        echo "<p style='color: red;'>File dengan nama ini sudah ada di server. Harap ganti nama file dan coba lagi.</p>";
     } else {
-        // Proses upload file
+        // Pindahkan file ke folder upload
         if (move_uploaded_file($file['tmp_name'], $filePath)) {
-            // Menyimpan informasi file ke database
             $stmt = $conn->prepare("INSERT INTO dokumen (nama_file, lokasi_file) VALUES (?, ?)");
             $stmt->bind_param("ss", $file['name'], $filePath);
             $stmt->execute();

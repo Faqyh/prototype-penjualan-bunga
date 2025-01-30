@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<p style='color: red;'>Tanggal mulai harus lebih kecil dari tanggal selesai.</p>";
     } else {
         $allData = [];
-        
+
         // Tentukan direktori tempat file Excel sudah ada
         $uploadDir = 'uploads/';
 
@@ -124,26 +124,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Urutkan berdasarkan tanggal **ascending**
+        // Urutkan berdasarkan tanggal sebelum pencarian
         usort($allData, function ($a, $b) {
             return strtotime($a['tanggal']) - strtotime($b['tanggal']);
         });
 
+        $start_time = microtime(true); // Mulai pencatatan waktu eksekusi Binary Search
+
         // Gunakan Binary Search untuk mencari data dalam rentang tanggal
         $filteredData = binarySearch($allData, $startDate, $endDate);
+
+        $end_time = microtime(true); // Selesai pencatatan waktu eksekusi Binary Search
+        $execution_time = $end_time - $start_time; // Hitung waktu eksekusi Binary Search
 
         // Pastikan data hasil Binary Search tetap terurut
         usort($filteredData, function ($a, $b) {
             return strtotime($a['tanggal']) - strtotime($b['tanggal']);
         });
 
-        // **Menampilkan Data**
+        // **Menampilkan Data Hasil Pencarian**
+        echo "<h2>Data yang Ditemukan berdasarkan Rentang Tanggal:</h2>";
         echo "<table border='1' cellpadding='5'>";
         echo "<thead><tr><th>NO</th><th>TANGGAL</th><th>DESKRIPSI</th><th>PEMASUKAN</th><th>PENGELUARAN</th><th>SALDO AKHIR</th></tr></thead>";
         echo "<tbody>";
 
         if (!empty($filteredData)) {
-            // Data sudah diurutkan sesuai tanggal, jadi kita cukup menampilkan tanpa perlu membalik urutan lagi
             foreach ($filteredData as $index => $data) {
                 echo "<tr>";
                 echo "<td>" . ($index + 1) . "</td>";
@@ -159,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         echo "</tbody></table>";
+        echo "<p>Waktu eksekusi Binary Search: " . number_format($execution_time, 6) . " detik</p>";
     }
 }
 ?>
