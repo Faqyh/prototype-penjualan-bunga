@@ -17,7 +17,8 @@ function formatTanggalExcel($tanggalRaw)
 }
 
 // Inisialisasi default nilai $execution_time
-$execution_time = null;
+$execution_time_bs = null;
+$execution_time_ss = null;
 
 // Proses Pencarian Data Pemasukan Berdasarkan Periode
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -64,18 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         return strtotime($a['tanggal']) - strtotime($b['tanggal']);
     });
 
-    $start_time = microtime(true); // Mulai pencatatan waktu eksekusi Binary Search
-
-    // Gunakan Binary Search untuk mencari data dalam rentang tanggal
+    // Bandingkan waktu eksekusi Binary Search
+    $start_time_bs = microtime(true);
     $filteredData = binarySearch($allData, $start_date, $end_date);
+    $end_time_bs = microtime(true);
+    $execution_time_bs = $end_time_bs - $start_time_bs;
 
-    $end_time = microtime(true); // Selesai pencatatan waktu eksekusi Binary Search
-    $execution_time = $end_time - $start_time; // Hitung waktu eksekusi Binary Search
+    // Bandingkan waktu eksekusi Sequential Search (tanpa menampilkan data)
+    $start_time_ss = microtime(true);
+    sequentialSearch($allData, $start_date, $end_date); // Data tidak ditampilkan
+    $end_time_ss = microtime(true);
+    $execution_time_ss = $end_time_ss - $start_time_ss;
 
-    // Pastikan data hasil Binary Search tetap terurut
-    usort($filteredData, function ($a, $b) {
-        return strtotime($a['tanggal']) - strtotime($b['tanggal']);
-    });
 } else {
     $allData = [];
     $filteredData = [];
@@ -136,6 +137,38 @@ function binarySearch($data, $startDate, $endDate)
     return array_slice($data, $startIndex, ($endIndex - $startIndex + 1));
 }
 
+// Fungsi Sequential Search untuk mencari index data berdasarkan periode
+function sequentialSearch($data, $startDate, $endDate)
+{
+    $result = [];
+    $start_index = -1;
+    $end_index = -1;
+
+    // Cari index awal dan akhir
+    for ($i = 0; $i < count($data); $i++) {
+        $current_date = $data[$i]['tanggal'];
+
+        if ($current_date >= $startDate) {
+            if ($start_index === -1) {
+                $start_index = $i;
+            }
+        }
+
+        if ($current_date <= $endDate) {
+            $end_index = $i; // Selalu update end_index untuk mendapatkan yang terakhir
+        }
+    }
+
+    // Jika ditemukan, masukkan data dari index awal hingga akhir ke result
+    if ($start_index !== -1 && $end_index !== -1) {
+        for ($i = $start_index; $i <= $end_index; $i++) {
+            $result[] = $data[$i];
+        }
+    }
+
+    return $result;
+}
+
 ?>
 
 <div class="main-content-inner">
@@ -191,8 +224,9 @@ function binarySearch($data, $startDate, $endDate)
                             </tbody>
                         </table>
                         <?php
-                        if ($execution_time !== null) {
-                            echo "<p>Waktu eksekusi Binary Search: " . number_format($execution_time, 6) . " detik</p>";
+                        if ($execution_time_bs !== null) {
+                            echo "<p>Waktu eksekusi Binary Search: " . number_format($execution_time_bs, 6) . " detik</p>";
+                            echo "<p>Waktu eksekusi Sequential Search: " . number_format($execution_time_ss, 6) . " detik</p>";
                         }
                         ?>
                     </div>
