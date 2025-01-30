@@ -10,8 +10,8 @@
 	          <div class="row slider-text justify-content-center align-items-center" data-scrollax-parent="true">
 
 	            <div class="col-md-12 ftco-animate text-center">
-	              <h1 class="mb-2">WEB PENJUALAN TANAMAN HIAS</h1>
-	              <h2 class="subheading mb-4">Menjual Segala Jenis Tanaman Hias &amp; Hidup</h2>
+	              <h1 class="mb-2">FLOWER BY KHANSA</h1>
+	              <h2 class="subheading mb-4">Every Flower is a Soul Blossoming in Nature</h2>
 	              <p><a href="#kesini" class="btn btn-primary">LEBIH LANJUT</a></p>
 	            </div>
 
@@ -27,18 +27,18 @@
           <div class="col-md-3 text-center d-flex align-self-stretch ftco-animate">
             <div class="media block-6 services mb-md-0 mb-4">
               <div class="icon bg-color-1 active d-flex justify-content-center align-items-center mb-2">
-            		<span class="flaticon-shipped"></span>
+            		<span class="flaticon-award"></span>
               </div>
               <div class="media-body">
-                <h3 class="heading">Gratis Ongkir</h3>
-                <span>Pengantaran Gratis</span>
+                <h3 class="heading">Harga Terjangkau</h3>
+                <span>Harga Murah dan Terjangkau</span>
               </div>
             </div>      
           </div>
           <div class="col-md-3 text-center d-flex align-self-stretch ftco-animate">
             <div class="media block-6 services mb-md-0 mb-4">
               <div class="icon bg-color-2 d-flex justify-content-center align-items-center mb-2">
-            		<span class="flaticon-diet"></span>
+            		<span class="flaticon-customer-service"></span>
               </div>
               <div class="media-body">
                 <h3 class="heading">Produk Terjamin</h3>
@@ -64,7 +64,7 @@
               </div>
               <div class="media-body">
                 <h3 class="heading">Fast Respon</h3>
-                <span>24/7 Support</span>
+                <span>Fast Respon dan Ramah</span>
               </div>
             </div>      
           </div>
@@ -154,9 +154,9 @@
         <div class="row justify-content-center mb-5 pb-3">
           <div class="col-md-7 heading-section ftco-animate text-center">
           	<span class="subheading">Tentang Kami</span>
-            <h2 class="mb-4">Flower Shop</h2>
-            <p>Ini adalah Project Aplikasi Konsentrasi yang menjadi salah satu bagian dari beberapa mata kuliah yang harus diselesaikan demi
-				mendapatkan hasil yang sempurna di mata kuliah ini.
+            <h2 class="mb-4">Flower by Khansa</h2>
+            <p>
+			Every Flower is a Soul Blossoming in Nature
 			</p>
           </div>
         </div>
