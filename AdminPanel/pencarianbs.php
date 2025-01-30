@@ -5,17 +5,24 @@ require '../vendor/autoload.php';  // Autoload PhpSpreadsheet
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-// Proses Pencarian Data Pemasukan Berdasarkan Periode
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['search'])) {
-    $periode_awal = mysqli_real_escape_string($conn, $_POST['periode_awal']);
-    $periode_akhir = mysqli_real_escape_string($conn, $_POST['periode_akhir']);
+function formatTanggalExcel($tanggalRaw)
+{
+    $parts = explode(' ', $tanggalRaw); // Pisahkan "Selasa 1/10/2024"
+    if (count($parts) > 1) {
+        $tanggalOnly = trim($parts[1]); // Ambil "1/10/2024"
+        $dateObject = DateTime::createFromFormat('j/n/Y', $tanggalOnly);
+        return $dateObject ? $dateObject->format('Y-m-d') : null;
+    }
+    return null;
+}
 
-    // Mengubah periode menjadi tanggal pertama dan terakhir pada bulan tersebut
-    $periode_awal = date('Y-m-01', strtotime($periode_awal));
-    $periode_akhir = date('Y-m-t', strtotime($periode_akhir));
-    
+// Proses Pencarian Data Pemasukan Berdasarkan Periode
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
+    $end_date = mysqli_real_escape_string($conn, $_POST['end_date']);
+
     // Menyimpan data hasil pencarian
-    $result_data = [];
+    $allData = [];
 
     // Menentukan direktori tempat file dokumen berada
     $directory = "../uploads/";
@@ -23,71 +30,106 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['search'])) {
 
     foreach ($files as $file) {
         $spreadsheet = IOFactory::load($file);
-        $sheet = $spreadsheet->getActiveSheet();
-        
+
         // Menyaring data berdasarkan periode
         $data = [];
-        foreach ($sheet->getRowIterator() as $row) {
-            $cellIterator = $row->getCellIterator();
-            $cellIterator->setIterateOnlyExistingCells(false);
-            
-            $row_data = [];
-            foreach ($cellIterator as $cell) {
-                $row_data[] = $cell->getValue();
+        for ($sheetIndex = 1; $sheetIndex <= 4; $sheetIndex++) {
+            try {
+                $sheet = $spreadsheet->getSheet($sheetIndex);
+                $sheetData = $sheet->toArray();
+                foreach ($sheetData as $index => $row) {
+                    if ($index == 0) continue; // Lewati Header
+
+                    $tanggalFormatted = formatTanggalExcel($row[1]); // Konversi tanggal
+                    if ($tanggalFormatted) {
+                        $allData[] = [
+                            'tanggal' => $tanggalFormatted,
+                            'deskripsi' => $row[2], // Asumsi kolom deskripsi ada di index 2
+                            'pemasukan' => $row[3], // Asumsi kolom pemasukan ada di index 3
+                            'pengeluaran' => $row[4], // Asumsi kolom pengeluaran ada di index 4
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                echo "<p style='color: red;'>Error memproses file " . basename($file) . ": " . $e->getMessage() . "</p>";
             }
-
-            // Mengonversi tanggal yang ada di kolom pertama ke format Y-m-d
-            $tanggal = trim($row_data[0]); // Ambil nilai tanggal dari kolom pertama
-            
-            // Cek apakah tanggal valid
-            $date_object = date_create_from_format('m/d/Y', $tanggal);  // Sesuaikan dengan format Excel yang diinginkan
-            if ($date_object) {
-                $tanggal = $date_object->format('Y-m-d'); // Ubah ke format Y-m-d
-            } else {
-                // Jika tanggal tidak valid, lanjutkan ke baris berikutnya
-                continue;
-            }
-
-            // Debugging: tampilkan tanggal yang diambil
-            echo "Tanggal: " . $row_data[0] . " -> " . $tanggal . "<br>";
-
-            // Memeriksa apakah tanggal dalam rentang yang diinginkan
-            if ($tanggal >= $periode_awal && $tanggal <= $periode_akhir) {
-                $data[] = $row_data;
-            }
-        }
-
-        // Menyimpan data yang ditemukan dalam rentang periode
-        if (!empty($data)) {
-            $result_data[$file] = $data;
         }
     }
 
-    // Menyortir hasil berdasarkan tanggal jika diperlukan
-    ksort($result_data); // Mengurutkan berdasarkan nama file atau tanggal
+    // Urutkan data berdasarkan tanggal sebelum pencarian
+    usort($allData, function ($a, $b) {
+        return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+    });
+
+    $start_time = microtime(true); // Mulai pencatatan waktu eksekusi Binary Search
+
+    // Gunakan Binary Search untuk mencari data dalam rentang tanggal
+    $filteredData = binarySearch($allData, $start_date, $end_date);
+
+    $end_time = microtime(true); // Selesai pencatatan waktu eksekusi Binary Search
+    $execution_time = $end_time - $start_time; // Hitung waktu eksekusi Binary Search
+
+    // Pastikan data hasil Binary Search tetap terurut
+    usort($filteredData, function ($a, $b) {
+        return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+    });
 } else {
-    $result_data = [];
+    $allData = [];
 }
 
 // Fungsi Binary Search untuk mencari index data berdasarkan periode
-function binarySearch($data, $periode) {
+function binarySearch($data, $startDate, $endDate)
+{
     $low = 0;
     $high = count($data) - 1;
+    $startIndex = -1;
+    $endIndex = -1;
 
+    // Cari indeks pertama dalam rentang menggunakan binary search
     while ($low <= $high) {
         $mid = floor(($low + $high) / 2);
-        $mid_value = $data[$mid][0]; // Misalkan kolom pertama adalah tanggal
+        $currentDate = $data[$mid]['tanggal'];
 
-        if ($mid_value < $periode) {
+        if ($currentDate >= $startDate && $currentDate <= $endDate) {
+            $startIndex = $mid;
+            $high = $mid - 1; // Coba cari yang lebih kecil
+        } elseif ($currentDate < $startDate) {
             $low = $mid + 1;
-        } elseif ($mid_value > $periode) {
-            $high = $mid - 1;
         } else {
-            return $mid;
+            $high = $mid - 1;
         }
     }
 
-    return -1; // Tidak ditemukan
+    if ($startIndex == -1) return []; // Tidak ada data dalam rentang
+
+    // Cari indeks terakhir dalam rentang menggunakan binary search
+    $low = 0;
+    $high = count($data) - 1;
+    while ($low <= $high) {
+        $mid = floor(($low + $high) / 2);
+        $currentDate = $data[$mid]['tanggal'];
+
+        if ($currentDate >= $startDate && $currentDate <= $endDate) {
+            $endIndex = $mid;
+            $low = $mid + 1; // Coba cari yang lebih besar
+        } elseif ($currentDate < $startDate) {
+            $low = $mid + 1;
+        } else {
+            $high = $mid - 1;
+        }
+    }
+
+    // **Meluas ke atas untuk mendapatkan semua data dengan tanggal awal**
+    while ($startIndex > 0 && $data[$startIndex - 1]['tanggal'] == $data[$startIndex]['tanggal']) {
+        $startIndex--;
+    }
+
+    // **Meluas ke bawah untuk mendapatkan semua data dengan tanggal akhir**
+    while ($endIndex < count($data) - 1 && $data[$endIndex + 1]['tanggal'] == $data[$endIndex]['tanggal']) {
+        $endIndex++;
+    }
+
+    return array_slice($data, $startIndex, ($endIndex - $startIndex + 1));
 }
 
 ?>
@@ -101,16 +143,16 @@ function binarySearch($data, $periode) {
                     <h4 class="header-title">Pencarian Data Pemasukan Berdasarkan Rentang Tanggal</h4>
 
                     <!-- Form untuk Pencarian Data Pemasukan Berdasarkan Periode -->
-                    <form action="pencarianbs.php" method="POST">
+                    <form method="POST">
                         <div class="form-group">
-                            <label for="periode_awal">Periode Awal (YYYY-MM-DD)</label>
-                            <input type="date" name="periode_awal" class="form-control" required>
+                            <label for="start_date">Periode Awal</label>
+                            <input type="date" name="start_date" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="periode_akhir">Periode Akhir (YYYY-MM-DD)</label>
-                            <input type="date" name="periode_akhir" class="form-control" required>
+                            <label for="end_date">Periode Akhir</label>
+                            <input type="date" name="end_date" class="form-control" required>
                         </div>
-                        <button type="submit" name="search" class="btn btn-primary btn-rounded">Cari Data</button>
+                        <button type="submit" class="btn btn-primary btn-rounded">Cari Data</button>
                     </form><br>
 
                     <!-- Tabel -->
@@ -119,28 +161,34 @@ function binarySearch($data, $periode) {
                             <thead class="text-capitalize">
                                 <tr>
                                     <th>No</th>
-                                    <th>Nama Dokumen</th>
                                     <th>Tanggal</th>
-                                    <th>Pemasukan/Pengeluaran</th>
+                                    <th>Deskripsi</th>
+                                    <th>Pemasukan</th>
+                                    <th>Pengeluaran</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
                                 // Loop untuk menampilkan data hasil pencarian
-                                $no = 1;
-                                foreach ($result_data as $file => $data) {
-                                    foreach ($data as $row) {
+                                if (!empty($filteredData)) {
+                                    foreach ($filteredData as $index => $data) {
                                         echo "<tr>";
-                                        echo "<td>" . $no++ . "</td>";
-                                        echo "<td>" . basename($file) . "</td>";
-                                        echo "<td>" . date('Y-m-d', strtotime($row[0])) . "</td>"; // Anggap tanggal ada di kolom pertama
-                                        echo "<td>" . $row[1] . "</td>"; // Anggap pemasukan/pengeluaran ada di kolom kedua
+                                        echo "<td>" . ($index + 1) . "</td>";
+                                        echo "<td>{$data['tanggal']}</td>";
+                                        echo "<td>{$data['deskripsi']}</td>";
+                                        echo "<td>{$data['pemasukan']}</td>";
+                                        echo "<td>{$data['pengeluaran']}</td>";
                                         echo "</tr>";
                                     }
+                                } else {
+                                    echo "<tr><td colspan='6'>Tidak ada data dalam rentang tanggal ini.</td></tr>";
                                 }
                                 ?>
                             </tbody>
                         </table>
+                        <?php
+                        echo "<p>Waktu eksekusi Binary Search: " . number_format($execution_time, 6) . " detik</p>";
+                        ?>
                     </div>
                 </div>
             </div>
