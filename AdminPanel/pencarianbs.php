@@ -16,6 +16,9 @@ function formatTanggalExcel($tanggalRaw)
     return null;
 }
 
+// Inisialisasi default nilai $execution_time
+$execution_time = null;
+
 // Proses Pencarian Data Pemasukan Berdasarkan Periode
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
@@ -75,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     });
 } else {
     $allData = [];
+    $filteredData = [];
 }
 
 // Fungsi Binary Search untuk mencari index data berdasarkan periode
@@ -187,7 +191,9 @@ function binarySearch($data, $startDate, $endDate)
                             </tbody>
                         </table>
                         <?php
-                        echo "<p>Waktu eksekusi Binary Search: " . number_format($execution_time, 6) . " detik</p>";
+                        if ($execution_time !== null) {
+                            echo "<p>Waktu eksekusi Binary Search: " . number_format($execution_time, 6) . " detik</p>";
+                        }
                         ?>
                     </div>
                 </div>
